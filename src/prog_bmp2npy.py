@@ -4,6 +4,7 @@ import os
 import extras
 import pandas as pd
 import argparse
+from tqdm import tqdm
 
 def generate_dataset(   input_base_dir,
                         output_base_dir,
@@ -18,7 +19,7 @@ def generate_dataset(   input_base_dir,
     input_images_dir = os.path.join(input_base_dir, images_dname)
     input_labels_dir = os.path.join(input_base_dir, labels_dname)
 
-    for i, dname in enumerate(os.listdir(input_images_dir)):
+    for i, dname in enumerate(tqdm(os.listdir(input_images_dir), desc="Processing TIFFs")):
         frel_img_list, frel_lbl_list = extras.generate(
             output_base_dir,
             input_images_dir,
