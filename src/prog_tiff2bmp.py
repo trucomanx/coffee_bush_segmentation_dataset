@@ -24,8 +24,7 @@ def tiff_to_bmp(archivo_tiff, output, image_names=['Red.bmp','Green.bmp','Blue.b
         # Convertir la banda en una matriz numpy
         matriz_banda = banda.ReadAsArray()
         
-        min_val = np.min(matriz_banda)
-        max_val = np.max(matriz_banda)
+        min_val, max_val = matriz_banda.min(), matriz_banda.max()
         
         if max_val > min_val:
             matriz_banda_normalizada = (matriz_banda - min_val) / (max_val - min_val) * 255
@@ -40,19 +39,55 @@ def tiff_to_bmp(archivo_tiff, output, image_names=['Red.bmp','Green.bmp','Blue.b
 
     ds = None
 
+def process_tiff_directory( input_dir, 
+                            output_base_dir,
+                            image_names=['Red.bmp','Green.bmp','Blue.bmp','Nir.bmp','RedEdge.bmp'],
+                            valid_ext = ('.tiff', '.tif') ):
+    
+    tiff_files = []
 
+    # Percorrer diretório recursivamente
+    for root, dirs, files in os.walk(input_dir):
+        for file in files:
+            if file.lower().endswith(valid_ext):
+                full_path = os.path.join(root, file)
+                tiff_files.append(full_path)
+
+    # Ordenar (importante para consistência)
+    tiff_files.sort()
+
+    if not tiff_files:
+        print("No TIFF files found.")
+        return
+
+    print(f"Found {len(tiff_files)} TIFF files")
+
+
+    os.makedirs(output_base_dir, exist_ok=True)
+
+    # Processar cada TIFF
+    for idx, tiff_path in enumerate(tiff_files):
+        output_dir = os.path.join(output_base_dir, str(idx))
+        os.makedirs(output_dir, exist_ok=True)
+        
+        print(f"[{idx:04d}] {os.path.relpath(tiff_path, input_dir)}")
+        
+        tiff_to_bmp(tiff_path, output_dir, image_names)
+        
 def main():
     parser = argparse.ArgumentParser(
         description="Convert TIFF multiband image to BMP bands using GDAL"
     )
     
     parser.add_argument(
-        "--input-tiff",
-        help="Path to input TIFF file"
+        "--input-dir",
+        required=True,
+        help="Path to input directory of TIFF files"
     )
     
     parser.add_argument(
         "--output-dir",
+        required=True,
         help="Directory to save BMP images"
     )
     
@@ -65,8 +100,8 @@ def main():
 
     args = parser.parse_args()
 
-    tiff_to_bmp(
-        args.input_tiff,
+    process_tiff_directory(
+        args.input_dir,
         args.output_dir,
         args.names
     )
@@ -76,8 +111,8 @@ if __name__ == "__main__":
     main()
 
 '''
-python3 script.py \
-  --input-tiff ../input/0-raw/bgrne_23.tiff \
-  --output-dir ../input/1-preprocessed/train/images/1 \
+python3 prog_tiff2bmp.py \
+  --input-dir ../input/0-raw \
+  --output-dir ../input/1-preprocessed/train/images \
   --names 'Red.bmp' 'Green.bmp' 'Blue.bmp' 'Nir.bmp' 'RedEdge.bmp'
 '''
