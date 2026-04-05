@@ -6,3 +6,7 @@
 /output/map.csv
 /example/__pycache__
 /output/train
+/datasets/2-segmentation/train-val/bushes.csv
+/datasets/2-segmentation/train-val/images/
+/datasets/2-segmentation/train-val/labels/
+/datasets/2-segmentation/train-val/map.csv
