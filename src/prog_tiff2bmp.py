@@ -6,9 +6,8 @@ import os
 import imageio
 import argparse
 
-def tiff_to_bmp(archivo_tiff, output, image_names=['Red.bmp','Green.bmp','Blue.bmp','Nir.bmp','RedEdge.bmp']):
-    os.makedirs(output, exist_ok=True)
-    
+
+def tiff_to_array(archivo_tiff, normalize=True, dtype=np.uint8):  
     ds = gdal.Open(archivo_tiff)
     
     if ds is None:
@@ -18,26 +17,48 @@ def tiff_to_bmp(archivo_tiff, output, image_names=['Red.bmp','Green.bmp','Blue.b
     num_bandas = ds.RasterCount
 
     # Iterar sobre cada banda
+    bands = []
     for i in range(1, num_bandas + 1):
         # Leer la banda actual
         banda = ds.GetRasterBand(i)
         # Convertir la banda en una matriz numpy
         matriz_banda = banda.ReadAsArray()
         
-        min_val, max_val = matriz_banda.min(), matriz_banda.max()
-        
-        if max_val > min_val:
-            matriz_banda_normalizada = (matriz_banda - min_val) / (max_val - min_val) * 255
-        else:
-            matriz_banda_normalizada = np.zeros_like(matriz_banda)
-        
-        matriz_banda_enteros = matriz_banda_normalizada.astype(np.uint8)
-        
-        nome = image_names[i-1] if i-1 < len(image_names) else f"band_{i}.bmp"
-        
-        imageio.imwrite(os.path.join(output, nome), matriz_banda_enteros)
+        if normalize:
+            min_val, max_val = matriz_banda.min(), matriz_banda.max()
+            
+            if max_val > min_val:
+                matriz_banda = (matriz_banda - min_val) / (max_val - min_val) * 255
+            else:
+                matriz_banda = np.zeros_like(matriz_banda)
 
-    ds = None
+        matriz_banda = matriz_banda.astype(dtype)
+                
+        bands.append(matriz_banda)
+
+    del ds
+        
+    if not bands:
+        raise ValueError("No bands found in TIFF")
+    
+    h, w = bands[0].shape
+    array = np.zeros((h, w, num_bandas), dtype=dtype)
+
+    for i, b in enumerate(bands):
+        array[:, :, i] = b
+
+    return array
+
+def tiff_to_bmp(archivo_tiff, output, image_names=['Red.bmp','Green.bmp','Blue.bmp','Nir.bmp','RedEdge.bmp']):
+    os.makedirs(output, exist_ok=True)
+    
+    array = tiff_to_array(archivo_tiff)
+    num_bandas = array.shape[2]
+
+    for i in range(num_bandas):
+        nome = image_names[i] if i < len(image_names) else f"band_{i}.bmp"
+        
+        imageio.imwrite(os.path.join(output, nome), array[:,:,i])
 
 def process_tiff_directory( input_dir, 
                             output_base_dir,
